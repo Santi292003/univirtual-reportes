@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Plus, LayoutGrid } from 'lucide-react'
+import { Plus, LayoutGrid, RefreshCw, WifiOff } from 'lucide-react'
 import { PROGRAMS } from './programs'
 import { useReports } from './useReports'
 import CategoryAccordion from './components/CategoryAccordion'
@@ -9,11 +9,8 @@ import styles from './App.module.css'
 export default function App() {
   const [activeTab, setActiveTab] = useState('regencia')
   const [modalOpen, setModalOpen] = useState(false)
-  const { data, addCategory, removeCategory, toggleCategory, addReport, removeReport } = useReports()
+  const { data, loading, error, addCategory, removeCategory, toggleCategory, addReport, removeReport } = useReports()
 
-  const activeProg = PROGRAMS.find(p => p.id === activeTab)
-
-  // categories map for modal
   const categoriesMap = Object.fromEntries(
     PROGRAMS.map(p => [p.id, data[p.id]?.categories || []])
   )
@@ -24,7 +21,6 @@ export default function App() {
 
   return (
     <>
-      {/* ── HEADER ── */}
       <header className={styles.header}>
         <div className={styles.brand}>
           <div className={styles.brandMark}>
@@ -43,7 +39,6 @@ export default function App() {
         <span className={`${styles.headerTag} mono`}>Looker Studio</span>
       </header>
 
-      {/* ── HERO ── */}
       <section className={styles.hero}>
         <div className={styles.heroInner}>
           <h1 className={styles.heroTitle}>Panel de <em>reportes</em> y métricas</h1>
@@ -54,92 +49,106 @@ export default function App() {
         </div>
       </section>
 
-      {/* ── MAIN ── */}
       <main className={styles.main}>
 
-        {/* Toolbar */}
-        <div className={styles.toolbar}>
-          <div className={styles.tabs}>
-            {PROGRAMS.map(prog => (
-              <button
-                key={prog.id}
-                className={`${styles.tabBtn} ${activeTab === prog.id ? styles.tabActive : ''}`}
-                style={activeTab === prog.id ? {
-                  background: prog.colorActive,
-                  borderColor: prog.colorActive,
-                  color: prog.colorActiveText,
-                  boxShadow: `0 4px 14px ${prog.accentShadow}`
-                } : {}}
-                onClick={() => setActiveTab(prog.id)}
-              >
-                <span className={styles.pip} style={{ background: prog.color }} />
-                {prog.label}
-                <span
-                  className={styles.badge}
-                  style={activeTab === prog.id ? {
-                    background: 'rgba(255,255,255,0.18)',
-                    color: prog.colorActiveText
-                  } : {
-                    background: prog.colorBg,
-                    color: prog.colorText
-                  }}
-                >
-                  {totalReports(prog.id)}
-                </span>
-              </button>
-            ))}
+        {/* Error banner */}
+        {error && (
+          <div className={styles.errorBanner}>
+            <WifiOff size={15} strokeWidth={2} />
+            {error}
           </div>
+        )}
 
-          <button className={styles.addBtn} onClick={() => setModalOpen(true)}>
-            <Plus size={14} strokeWidth={2.2} />
-            Agregar
-          </button>
-        </div>
-
-        {/* Panels */}
-        {PROGRAMS.map(prog => (
-          <div
-            key={prog.id}
-            className={`${styles.panel} ${activeTab === prog.id ? styles.panelActive : ''}`}
-          >
-            <p className={`${styles.panelLabel} mono`}>
-              {prog.label} · {(data[prog.id]?.categories || []).length} categorías
-            </p>
-
-            {(data[prog.id]?.categories || []).length === 0 ? (
-              <div className={styles.empty}>
-                <div className={styles.emptyIcon}>
-                  <LayoutGrid size={22} strokeWidth={1.5} color="var(--muted-lt)" />
-                </div>
-                <p className={styles.emptyTitle}>Sin categorías aún</p>
-                <p className={styles.emptyDesc}>
-                  Crea una categoría (ej: 2025-1) para empezar a organizar los reportes de {prog.label}.
-                </p>
-                <button
-                  className={styles.emptyBtn}
-                  style={{ borderColor: prog.color, color: prog.colorText }}
-                  onClick={() => setModalOpen(true)}
-                >
-                  <Plus size={13} strokeWidth={2.2} />
-                  Crear categoría
-                </button>
-              </div>
-            ) : (
-              <div className={styles.accordionList}>
-                {(data[prog.id]?.categories || []).map(cat => (
-                  <CategoryAccordion
-                    key={cat.id}
-                    category={cat}
-                    program={prog.id}
-                    onToggle={id => toggleCategory(prog.id, id)}
-                    onRemoveCategory={id => removeCategory(prog.id, id)}
-                    onRemoveReport={(catId, repId) => removeReport(prog.id, catId, repId)}
-                  />
+        {/* Loading */}
+        {loading ? (
+          <div className={styles.loadingState}>
+            <RefreshCw size={20} strokeWidth={1.8} className={styles.spinner} />
+            <p>Cargando reportes...</p>
+          </div>
+        ) : (
+          <>
+            <div className={styles.toolbar}>
+              <div className={styles.tabs}>
+                {PROGRAMS.map(prog => (
+                  <button
+                    key={prog.id}
+                    className={`${styles.tabBtn} ${activeTab === prog.id ? styles.tabActive : ''}`}
+                    style={activeTab === prog.id ? {
+                      background: prog.colorActive,
+                      borderColor: prog.colorActive,
+                      color: prog.colorActiveText,
+                      boxShadow: `0 4px 14px ${prog.accentShadow}`
+                    } : {}}
+                    onClick={() => setActiveTab(prog.id)}
+                  >
+                    <span className={styles.pip} style={{ background: prog.color }} />
+                    {prog.label}
+                    <span
+                      className={styles.badge}
+                      style={activeTab === prog.id ? {
+                        background: 'rgba(255,255,255,0.18)',
+                        color: prog.colorActiveText
+                      } : {
+                        background: prog.colorBg,
+                        color: prog.colorText
+                      }}
+                    >
+                      {totalReports(prog.id)}
+                    </span>
+                  </button>
                 ))}
               </div>
-            )}
-          </div>
-        ))}
+              <button className={styles.addBtn} onClick={() => setModalOpen(true)}>
+                <Plus size={14} strokeWidth={2.2} />
+                Agregar
+              </button>
+            </div>
+
+            {PROGRAMS.map(prog => (
+              <div
+                key={prog.id}
+                className={`${styles.panel} ${activeTab === prog.id ? styles.panelActive : ''}`}
+              >
+                <p className={`${styles.panelLabel} mono`}>
+                  {prog.label} · {(data[prog.id]?.categories || []).length} categorías
+                </p>
+
+                {(data[prog.id]?.categories || []).length === 0 ? (
+                  <div className={styles.empty}>
+                    <div className={styles.emptyIcon}>
+                      <LayoutGrid size={22} strokeWidth={1.5} color="var(--muted-lt)" />
+                    </div>
+                    <p className={styles.emptyTitle}>Sin categorías aún</p>
+                    <p className={styles.emptyDesc}>
+                      Crea una categoría (ej: 2025-1) para empezar a organizar los reportes de {prog.label}.
+                    </p>
+                    <button
+                      className={styles.emptyBtn}
+                      style={{ borderColor: prog.color, color: prog.colorText }}
+                      onClick={() => setModalOpen(true)}
+                    >
+                      <Plus size={13} strokeWidth={2.2} />
+                      Crear categoría
+                    </button>
+                  </div>
+                ) : (
+                  <div className={styles.accordionList}>
+                    {(data[prog.id]?.categories || []).map(cat => (
+                      <CategoryAccordion
+                        key={cat.id}
+                        category={cat}
+                        program={prog.id}
+                        onToggle={id => toggleCategory(prog.id, id)}
+                        onRemoveCategory={id => removeCategory(prog.id, id)}
+                        onRemoveReport={(catId, repId) => removeReport(prog.id, catId, repId)}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+          </>
+        )}
       </main>
 
       <footer className={`${styles.footer} mono`}>

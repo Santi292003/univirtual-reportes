@@ -1,80 +1,88 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import pb from './pb'
 
-const STORAGE_KEY = 'univirtual_reports_v2'
-
-const DEFAULT_DATA = {
+const DEFAULT_STATE = {
   pregrado:  { categories: [] },
-  regencia:  {
-    categories: [
-      {
-        id: 'reg-cat-default',
-        name: '2025-1',
-        expanded: true,
-        reports: [
-          {
-            id: 'default-reg-1',
-            name: 'Cancelaciones de matrícula',
-            desc: 'Análisis de estudiantes con proceso de cancelación activo en el programa',
-            url: 'https://datastudio.google.com/reporting/67b76d63-c830-452e-9f7f-4f36435eb4ad',
-            createdAt: Date.now()
-          }
-        ]
-      }
-    ]
-  },
+  regencia:  { categories: [] },
   ilex:      { categories: [] },
   extension: { categories: [] }
 }
 
-function load() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    if (!raw) return DEFAULT_DATA
-    return JSON.parse(raw)
-  } catch {
-    return DEFAULT_DATA
+function buildState(categories, reports) {
+  const state = {
+    pregrado:  { categories: [] },
+    regencia:  { categories: [] },
+    ilex:      { categories: [] },
+    extension: { categories: [] }
   }
-}
 
-function save(data) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data))
-  } catch {
-    console.error('Error guardando en localStorage')
-  }
+  categories.forEach(cat => {
+    if (!state[cat.program]) return
+    state[cat.program].categories.push({
+      id: cat.id,
+      name: cat.name,
+      expanded: true,
+      reports: reports
+        .filter(r => r.category_id === cat.id)
+        .map(r => ({
+          id: r.id,
+          name: r.name,
+          desc: r.desc,
+          url: r.url,
+          createdAt: r.created
+        }))
+    })
+  })
+
+  return state
 }
 
 export function useReports() {
-  const [data, setData] = useState(load)
+  const [data, setData]       = useState(DEFAULT_STATE)
+  const [loading, setLoading] = useState(true)
+  const [error, setError]     = useState(null)
 
-  useEffect(() => { save(data) }, [data])
+  const fetchAll = useCallback(async () => {
+    try {
+      const [cats, reps] = await Promise.all([
+        pb.collection('categories').getFullList({ sort: 'created' }),
+        pb.collection('reports').getFullList({ sort: 'created' })
+      ])
+      setData(buildState(cats, reps))
+      setError(null)
+    } catch (e) {
+      setError('No se pudo conectar con el servidor. Verifica la conexión.')
+    } finally {
+      setLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchAll()
+
+    // realtime subscriptions
+    let unsubCats, unsubReps
+    pb.collection('categories').subscribe('*', () => fetchAll()).then(u => unsubCats = u)
+    pb.collection('reports').subscribe('*', () => fetchAll()).then(u => unsubReps = u)
+
+    return () => {
+      unsubCats?.()
+      unsubReps?.()
+    }
+  }, [fetchAll])
 
   // ── CATEGORIES ──
-  function addCategory(program, name) {
-    const cat = {
-      id: `cat-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
-      name: name.trim(),
-      expanded: true,
-      reports: []
-    }
-    setData(prev => ({
-      ...prev,
-      [program]: {
-        ...prev[program],
-        categories: [...prev[program].categories, cat]
-      }
-    }))
-    return cat
+  async function addCategory(program, name) {
+    await pb.collection('categories').create({ program, name })
   }
 
-  function removeCategory(program, catId) {
-    setData(prev => ({
-      ...prev,
-      [program]: {
-        ...prev[program],
-        categories: prev[program].categories.filter(c => c.id !== catId)
-      }
-    }))
+  async function removeCategory(program, catId) {
+    // delete all reports in category first
+    const reps = await pb.collection('reports').getFullList({
+      filter: `category_id = "${catId}"`
+    })
+    await Promise.all(reps.map(r => pb.collection('reports').delete(r.id)))
+    await pb.collection('categories').delete(catId)
   }
 
   function toggleCategory(program, catId) {
@@ -90,39 +98,19 @@ export function useReports() {
   }
 
   // ── REPORTS ──
-  function addReport(program, catId, { name, desc, url }) {
-    const report = {
-      id: `rep-${Date.now()}-${Math.random().toString(36).slice(2,5)}`,
-      name: name.trim(),
-      desc: desc.trim(),
-      url: url.trim(),
-      createdAt: Date.now()
-    }
-    setData(prev => ({
-      ...prev,
-      [program]: {
-        ...prev[program],
-        categories: prev[program].categories.map(c =>
-          c.id === catId ? { ...c, reports: [...c.reports, report] } : c
-        )
-      }
-    }))
-    return report
+  async function addReport(program, catId, { name, desc, url }) {
+    await pb.collection('reports').create({
+      category_id: catId,
+      program,
+      name,
+      desc,
+      url
+    })
   }
 
-  function removeReport(program, catId, reportId) {
-    setData(prev => ({
-      ...prev,
-      [program]: {
-        ...prev[program],
-        categories: prev[program].categories.map(c =>
-          c.id === catId
-            ? { ...c, reports: c.reports.filter(r => r.id !== reportId) }
-            : c
-        )
-      }
-    }))
+  async function removeReport(program, catId, reportId) {
+    await pb.collection('reports').delete(reportId)
   }
 
-  return { data, addCategory, removeCategory, toggleCategory, addReport, removeReport }
+  return { data, loading, error, addCategory, removeCategory, toggleCategory, addReport, removeReport }
 }
