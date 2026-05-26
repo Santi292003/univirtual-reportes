@@ -1,0 +1,126 @@
+.card {
+  position: relative;
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  transition: border-color 0.18s, transform 0.18s, box-shadow 0.18s;
+  animation: cardIn 0.22s ease both;
+}
+
+@keyframes cardIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0)   scale(1); }
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  background: var(--accent);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  transition: height 0.18s;
+}
+
+.card:hover {
+  border-color: var(--border-md);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
+}
+
+.card:hover::before { height: 4px; }
+
+.cardLink {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 1.2rem 1.2rem 1rem;
+  text-decoration: none;
+  color: inherit;
+}
+
+.iconWrap {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.body { flex: 1; }
+
+.name {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  margin-bottom: 4px;
+}
+
+.desc {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-top: 8px;
+  border-top: 1px solid var(--border);
+}
+
+.source {
+  font-size: 10px;
+  color: var(--muted-lt);
+  letter-spacing: 0.3px;
+}
+
+.extIcon {
+  color: var(--muted-lt);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.card:hover .extIcon { opacity: 1; }
+
+/* ── DELETE BUTTON ── */
+.deleteBtn {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--muted-lt);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: 'DM Sans', sans-serif;
+  opacity: 0;
+  transition: all 0.15s;
+}
+
+.card:hover .deleteBtn { opacity: 1; }
+
+.deleteBtn:hover {
+  background: rgba(242, 97, 97, 0.10);
+  border-color: rgba(242, 97, 97, 0.25);
+  color: #C0392B;
+}
+
+.deleteBtn.confirming {
+  background: rgba(242, 97, 97, 0.14);
+  border-color: rgba(242, 97, 97, 0.35);
+  color: #C0392B;
+  opacity: 1;
+}
