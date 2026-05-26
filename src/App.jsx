@@ -1,21 +1,25 @@
 import { useState } from 'react'
-import { Plus, LayoutGrid, ExternalLink } from 'lucide-react'
+import { Plus, LayoutGrid } from 'lucide-react'
 import { PROGRAMS } from './programs'
 import { useReports } from './useReports'
-import ReportCard from './components/ReportCard'
-import AddReportModal from './components/AddReportModal'
+import CategoryAccordion from './components/CategoryAccordion'
+import AddModal from './components/AddModal'
 import styles from './App.module.css'
 
 export default function App() {
   const [activeTab, setActiveTab] = useState('regencia')
   const [modalOpen, setModalOpen] = useState(false)
-  const { reports, addReport, removeReport } = useReports()
+  const { data, addCategory, removeCategory, toggleCategory, addReport, removeReport } = useReports()
 
   const activeProg = PROGRAMS.find(p => p.id === activeTab)
 
-  function handleAdd(program, data) {
-    addReport(program, data)
-    setActiveTab(program)
+  // categories map for modal
+  const categoriesMap = Object.fromEntries(
+    PROGRAMS.map(p => [p.id, data[p.id]?.categories || []])
+  )
+
+  function totalReports(progId) {
+    return (data[progId]?.categories || []).reduce((sum, c) => sum + c.reports.length, 0)
   }
 
   return (
@@ -42,12 +46,10 @@ export default function App() {
       {/* ── HERO ── */}
       <section className={styles.hero}>
         <div className={styles.heroInner}>
-          <h1 className={styles.heroTitle}>
-            Panel de <em>reportes</em> y métricas
-          </h1>
+          <h1 className={styles.heroTitle}>Panel de <em>reportes</em> y métricas</h1>
           <p className={styles.heroSub}>
-            Accede a los dashboards de seguimiento por programa académico.
-            Datos actualizados en tiempo real desde Looker Studio.
+            Accede a los dashboards de seguimiento por programa académico,
+            organizados por categoría y periodo.
           </p>
         </div>
       </section>
@@ -82,39 +84,36 @@ export default function App() {
                     color: prog.colorText
                   }}
                 >
-                  {reports[prog.id]?.length || 0}
+                  {totalReports(prog.id)}
                 </span>
               </button>
             ))}
           </div>
 
-          <button
-            className={styles.addBtn}
-            onClick={() => setModalOpen(true)}
-          >
-            <Plus size={15} strokeWidth={2.2} />
-            Agregar reporte
+          <button className={styles.addBtn} onClick={() => setModalOpen(true)}>
+            <Plus size={14} strokeWidth={2.2} />
+            Agregar
           </button>
         </div>
 
-        {/* Panel content */}
+        {/* Panels */}
         {PROGRAMS.map(prog => (
           <div
             key={prog.id}
             className={`${styles.panel} ${activeTab === prog.id ? styles.panelActive : ''}`}
           >
             <p className={`${styles.panelLabel} mono`}>
-              Reportes · {prog.label}
+              {prog.label} · {(data[prog.id]?.categories || []).length} categorías
             </p>
 
-            {reports[prog.id]?.length === 0 ? (
+            {(data[prog.id]?.categories || []).length === 0 ? (
               <div className={styles.empty}>
                 <div className={styles.emptyIcon}>
                   <LayoutGrid size={22} strokeWidth={1.5} color="var(--muted-lt)" />
                 </div>
-                <p className={styles.emptyTitle}>Sin reportes aún</p>
+                <p className={styles.emptyTitle}>Sin categorías aún</p>
                 <p className={styles.emptyDesc}>
-                  Agrega el primer reporte de {prog.label} con el botón de arriba.
+                  Crea una categoría (ej: 2025-1) para empezar a organizar los reportes de {prog.label}.
                 </p>
                 <button
                   className={styles.emptyBtn}
@@ -122,35 +121,38 @@ export default function App() {
                   onClick={() => setModalOpen(true)}
                 >
                   <Plus size={13} strokeWidth={2.2} />
-                  Agregar reporte
+                  Crear categoría
                 </button>
               </div>
             ) : (
-              <div className={styles.grid}>
-                {reports[prog.id].map(report => (
-                  <ReportCard
-                    key={report.id}
-                    report={report}
+              <div className={styles.accordionList}>
+                {(data[prog.id]?.categories || []).map(cat => (
+                  <CategoryAccordion
+                    key={cat.id}
+                    category={cat}
                     program={prog.id}
-                    onRemove={id => removeReport(prog.id, id)}
+                    onToggle={id => toggleCategory(prog.id, id)}
+                    onRemoveCategory={id => removeCategory(prog.id, id)}
+                    onRemoveReport={(catId, repId) => removeReport(prog.id, catId, repId)}
                   />
                 ))}
               </div>
             )}
           </div>
         ))}
-
       </main>
 
       <footer className={`${styles.footer} mono`}>
         univirtual · utp &nbsp;—&nbsp; datos vía looker studio
       </footer>
 
-      <AddReportModal
+      <AddModal
         open={modalOpen}
         onClose={() => setModalOpen(false)}
-        onConfirm={handleAdd}
+        onAddCategory={(prog, name) => { addCategory(prog, name); setActiveTab(prog) }}
+        onAddReport={(prog, catId, form) => { addReport(prog, catId, form); setActiveTab(prog) }}
         defaultProgram={activeTab}
+        categories={categoriesMap}
       />
     </>
   )

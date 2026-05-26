@@ -28,6 +28,16 @@ export const PROGRAMS = [
     colorActive: '#1E5C36',
     colorActiveText: '#68CC87',
     accentShadow: 'rgba(30,92,54,0.22)'
+  },
+  {
+    id: 'extension',
+    label: 'Extensión',
+    color: '#F26161',
+    colorBg: 'rgba(242,97,97,0.13)',
+    colorText: '#8B2020',
+    colorActive: '#7A1C1C',
+    colorActiveText: '#FFADAD',
+    accentShadow: 'rgba(122,28,28,0.22)'
   }
 ]
 
